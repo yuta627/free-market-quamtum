@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import { listProducts, type Product } from "../api/products";
-import { listAuctions, type Auction } from "../api/auctions";
+import { listAuctions, finalizeAuction, type Auction } from "../api/auctions";
 import { toggleLike, listLikeHistory } from "../api/likes";
-import { getQuantumRandom, type QuantumRandomResult } from "../api/quantum";
+import { type QuantumRandomResult } from "../api/quantum";
 import { useAuth } from "../features/auth/AuthContext";
 import styles from "./Home.module.css";
 
@@ -33,7 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [auctionError, setAuctionError] = useState(false);
-  const [qrngResults, setQrngResults] = useState<Record<number, QuantumRandomResult & { winner: number }>>({});
+  const [qrngResults, setQrngResults] = useState<Record<number, QuantumRandomResult & { winner: string; auction?: Auction }>>({});
   const [qrngLoading, setQrngLoading] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function Home() {
               <div className={styles.grid}>
                 {auctions.map((a) => {
                   const remaining = formatRemaining(a.ends_at);
-                  const hasTie = a.bid_count >= 3;
+                  const isEnded = remaining === "終了" && a.status === "active" && a.bid_count > 0;
                   const qResult = qrngResults[a.id];
                   const isLoading = qrngLoading[a.id];
 
@@ -179,11 +179,11 @@ export default function Home() {
                     e.preventDefault();
                     setQrngLoading((prev) => ({ ...prev, [a.id]: true }));
                     try {
-                      const result = await getQuantumRandom(0, a.bid_count, "auction");
-                      setQrngResults((prev) => ({ ...prev, [a.id]: { ...result, winner: result.value + 1 } }));
+                      const result = await finalizeAuction(a.id);
+                      setQrngResults((prev) => ({ ...prev, [a.id]: { value: 0, bits: [], n_qubits: 0, circuit_depth: 0, purpose: "auction", winner: result.winner?.name ?? `ID:${result.winner_id}`, auction: result } }));
+                      setAuctions((prev) => prev.map((au) => au.id === a.id ? result : au));
                     } catch {
-                      const fallback = Math.floor(Math.random() * a.bid_count);
-                      setQrngResults((prev) => ({ ...prev, [a.id]: { value: fallback, bits: [], n_qubits: 0, circuit_depth: 0, purpose: "auction", winner: fallback + 1 } }));
+                      alert("落札者決定に失敗しました。オークションが終了しているか確認してください。");
                     } finally {
                       setQrngLoading((prev) => ({ ...prev, [a.id]: false }));
                     }
@@ -207,7 +207,7 @@ export default function Home() {
                         </div>
                       </Link>
 
-                      {hasTie && !qResult && (
+                      {isEnded && !qResult && (
                         <button className={styles.quantumBtn} onClick={handleQuantumDraw} disabled={isLoading}>
                           {isLoading ? "⏳ 量子計算中..." : "⚛️ 量子抽選で落札者決定"}
                         </button>
@@ -221,7 +221,7 @@ export default function Home() {
                               <span className={styles.quantumBitsMeta}> ({qResult.n_qubits}量子ビット / depth {qResult.circuit_depth})</span>
                             </p>
                           )}
-                          <p className={styles.quantumWinner}>🏆 入札者 #{qResult.winner} が落札</p>
+                          <p className={styles.quantumWinner}>🏆 {qResult.winner} が落札</p>
                           <p className={styles.quantumNote}>Hadamardゲートによる真の乱数。予測・再現不可能。</p>
                         </div>
                       )}

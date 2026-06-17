@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"fleamarket-backend/internal/domain"
+	"fleamarket-backend/internal/infrastructure"
 	"fleamarket-backend/internal/infrastructure/persistence"
 )
 
@@ -16,10 +17,11 @@ var (
 type AuctionUsecase struct {
 	auctionRepo *persistence.AuctionRepository
 	productRepo *persistence.ProductRepository
+	qrng        *infrastructure.QRNGClient
 }
 
-func NewAuctionUsecase(ar *persistence.AuctionRepository, pr *persistence.ProductRepository) *AuctionUsecase {
-	return &AuctionUsecase{auctionRepo: ar, productRepo: pr}
+func NewAuctionUsecase(ar *persistence.AuctionRepository, pr *persistence.ProductRepository, qrng *infrastructure.QRNGClient) *AuctionUsecase {
+	return &AuctionUsecase{auctionRepo: ar, productRepo: pr, qrng: qrng}
 }
 
 type CreateAuctionInput struct {
@@ -69,6 +71,43 @@ func (u *AuctionUsecase) GetByID(id uint) (*domain.Auction, error) {
 		return nil, ErrAuctionNotFound
 	}
 	return a, nil
+}
+
+// FinalizeAuction はオークションを終了し、QRNGで同額最高入札者の中から落札者を決定する。
+func (u *AuctionUsecase) FinalizeAuction(auctionID uint) (*domain.Auction, error) {
+	a, err := u.auctionRepo.FindByID(auctionID)
+	if err != nil {
+		return nil, err
+	}
+	if a == nil {
+		return nil, ErrAuctionNotFound
+	}
+	if a.Status != "active" {
+		return nil, domain.ErrAlreadyFinalized
+	}
+	if time.Now().Before(a.EndsAt) {
+		return nil, domain.ErrAuctionNotEnded
+	}
+
+	topBids, err := u.auctionRepo.FindTopBids(auctionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(topBids) == 0 {
+		return nil, domain.ErrNoBids
+	}
+
+	// 同額入札者が複数いる場合はQRNGで公平に抽選
+	winnerBid := topBids[0]
+	if len(topBids) > 1 {
+		result, qErr := u.qrng.GetRandom(0, len(topBids)-1, "auction_tiebreak")
+		if qErr == nil {
+			winnerBid = topBids[result.Value]
+		}
+		// QRNG失敗時は最初の入札者（早い者勝ち）
+	}
+
+	return u.auctionRepo.Finalize(auctionID, winnerBid.BidderID, winnerBid.ID)
 }
 
 func (u *AuctionUsecase) PlaceBid(auctionID, bidderID uint, amount int) (*domain.Auction, error) {

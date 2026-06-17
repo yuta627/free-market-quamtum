@@ -17,6 +17,8 @@ export interface Auction {
   bid_count: number;
   ends_at: string;
   status: string;
+  winner_id?: number;
+  winner?: { id: number; name: string };
   product: {
     id: number;
     title: string;
@@ -46,3 +48,6 @@ export const createAuction = (data: {
 
 export const placeBid = (auctionId: number, amount: number) =>
   client.post<Auction>(`/auctions/${auctionId}/bid`, { amount }).then((r) => r.data);
+
+export const finalizeAuction = (auctionId: number) =>
+  client.post<Auction>(`/auctions/${auctionId}/finalize`).then((r) => r.data);

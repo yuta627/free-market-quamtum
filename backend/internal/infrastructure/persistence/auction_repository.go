@@ -60,6 +60,41 @@ func (r *AuctionRepository) ListActive(limit, offset int) ([]domain.Auction, int
 	return auctions, total, err
 }
 
+// FindTopBids は最高額の入札をすべて返す（同額タイの場合に複数返る）。
+func (r *AuctionRepository) FindTopBids(auctionID uint) ([]domain.Bid, error) {
+	var a domain.Auction
+	if err := r.db.First(&a, auctionID).Error; err != nil {
+		return nil, err
+	}
+	var bids []domain.Bid
+	err := r.db.Where("auction_id = ? AND amount = ?", auctionID, a.CurrentPrice).
+		Order("created_at ASC").
+		Find(&bids).Error
+	return bids, err
+}
+
+// Finalize は落札者・落札入札を記録してステータスを ended に更新する。
+func (r *AuctionRepository) Finalize(auctionID, winnerID, winnerBidID uint) (*domain.Auction, error) {
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var a domain.Auction
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&a, auctionID).Error; err != nil {
+			return err
+		}
+		if a.Status != "active" {
+			return domain.ErrAlreadyFinalized
+		}
+		return tx.Model(&a).Updates(map[string]interface{}{
+			"status":        "ended",
+			"winner_id":     winnerID,
+			"winner_bid_id": winnerBidID,
+		}).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r.FindByID(auctionID)
+}
+
 func (r *AuctionRepository) PlaceBid(bid *domain.Bid, newPrice int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var a domain.Auction

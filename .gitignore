@@ -1,3 +1,4 @@
 ml/venv/
 node_modules/
 .env
+.claude/

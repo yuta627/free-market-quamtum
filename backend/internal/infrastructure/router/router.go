@@ -84,6 +84,7 @@ func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *han
 			{
 				authedAuctions.POST("", auctionH.Create)
 				authedAuctions.POST("/:id/bid", auctionH.PlaceBid)
+				authedAuctions.POST("/:id/finalize", auctionH.Finalize)
 			}
 		}
 	}

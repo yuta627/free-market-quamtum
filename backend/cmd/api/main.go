@@ -59,7 +59,7 @@ func main() {
 	quantumH := handler.NewQuantumHandler(qrngClient)
 
 	auctionRepo := persistence.NewAuctionRepository(db)
-	auctionUC := usecase.NewAuctionUsecase(auctionRepo, productRepo)
+	auctionUC := usecase.NewAuctionUsecase(auctionRepo, productRepo, qrngClient)
 	auctionH := handler.NewAuctionHandler(auctionUC)
 
 	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH)
