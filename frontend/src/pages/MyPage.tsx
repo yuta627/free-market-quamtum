@@ -60,6 +60,12 @@ export default function MyPage() {
         <main className={styles.main}>
           <User size={48} strokeWidth={1.2} color="#ddd" />
           <p>ログインしていません</p>
+          <button className={styles.logoutBtn} onClick={() => navigate("/login")}>
+            ログイン
+          </button>
+          <button className={styles.logoutBtn} onClick={() => navigate("/signup")} style={{ marginTop: "0.5rem" }}>
+            新規登録
+          </button>
         </main>
       </div>
     );
