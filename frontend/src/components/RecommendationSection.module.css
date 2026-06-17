@@ -1,0 +1,141 @@
+.section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #eee;
+}
+
+.section h3 {
+  font-size: .9rem;
+  color: #888;
+  margin-bottom: .25rem;
+}
+
+.hint {
+  font-size: .78rem;
+  color: #aaa;
+  margin-bottom: .75rem;
+}
+
+.status {
+  color: #aaa;
+  font-size: .85rem;
+}
+
+.scrollRow {
+  display: flex;
+  gap: .75rem;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+  scrollbar-width: none;
+}
+
+.scrollRow::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  position: relative;
+  flex: 0 0 130px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.card:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 100px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: .75rem;
+  text-align: center;
+  padding: .25rem;
+}
+
+.name {
+  font-size: .72rem;
+  color: #333;
+  margin: .4rem .5rem .2rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.4em;
+}
+
+.price {
+  font-size: .85rem;
+  font-weight: 700;
+  color: #111;
+  margin: 0 .5rem .5rem;
+}
+
+.coldBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #f60;
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  padding: .1rem .35rem;
+  border-radius: 4px;
+}
+
+.toggleRow {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: .5rem;
+}
+
+.toggleBtn {
+  padding: .25rem .7rem;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  font-size: .72rem;
+  cursor: pointer;
+  color: #666;
+  transition: all .15s;
+}
+
+.toggleActive {
+  background: #ff6b35;
+  border-color: #ff6b35;
+  color: #fff;
+  font-weight: 600;
+}
+
+.toggleActiveQml {
+  background: linear-gradient(135deg, #6f00ff, #a855f7);
+  border-color: #6f00ff;
+  color: #fff;
+  font-weight: 600;
+}
+
+.qmlCard {
+  border: 1px solid rgba(111, 0, 255, 0.2);
+  box-shadow: 0 1px 6px rgba(111, 0, 255, 0.1);
+}
+
+.qmlBadge {
+  display: block;
+  text-align: center;
+  font-size: .6rem;
+  color: #a855f7;
+  font-weight: 700;
+  padding-bottom: .3rem;
+}

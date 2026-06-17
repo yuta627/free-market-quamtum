@@ -1,0 +1,290 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: #f5f5f5;
+}
+
+.tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex-shrink: 0;
+  padding: 0.7rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #666;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tabActive {
+  color: #f60;
+  border-bottom-color: #f60;
+  font-weight: 700;
+}
+
+.main {
+  flex: 1;
+  padding: 1rem;
+  padding-bottom: 72px;
+}
+
+.searchNote {
+  font-size: 0.875rem;
+  color: #555;
+  margin-bottom: 0.75rem;
+}
+
+.placeholder {
+  text-align: center;
+  color: #aaa;
+  margin-top: 4rem;
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+.tabNote {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+
+/* ── クーポン ── */
+.couponCard {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+
+.couponBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: #e33;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.couponImg {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.couponImgText {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.couponBody {
+  padding: 0.4rem 0.5rem 0.55rem;
+}
+
+.couponTitle {
+  font-size: 0.75rem;
+  color: #333;
+  margin: 0 0 0.25rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.couponOriginal {
+  font-size: 0.7rem;
+  color: #aaa;
+  text-decoration: line-through;
+  margin: 0 0 0.1rem;
+}
+
+.couponPrice {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #e33;
+  margin: 0;
+}
+
+/* ── オークション ── */
+.auctionCard {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  text-decoration: none;
+  color: inherit;
+}
+
+.auctionImg {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auctionImgText {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.auctionBody {
+  padding: 0.4rem 0.5rem 0.55rem;
+}
+
+.auctionTitle {
+  font-size: 0.75rem;
+  color: #333;
+  margin: 0 0 0.2rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.auctionBid {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 0.25rem;
+}
+
+.auctionMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.auctionBids {
+  font-size: 0.65rem;
+  color: #888;
+}
+
+.auctionRemaining {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #e33;
+}
+
+.auctionEnded {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #aaa;
+}
+
+/* auctionCard をブロック要素に変更（ボタンを内包するため） */
+.auctionLink {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── 量子抽選 ── */
+.quantumBtn {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  border-radius: 0 0 10px 10px;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s;
+}
+
+.quantumBtn:hover {
+  opacity: 0.88;
+}
+
+.quantumBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quantumResult {
+  padding: 0.5rem 0.55rem 0.6rem;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  border-radius: 0 0 10px 10px;
+}
+
+.quantumTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #a78bfa;
+  margin: 0 0 0.3rem;
+}
+
+.quantumBits {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #34d399;
+  margin: 0 0 0.25rem;
+  word-break: break-all;
+  letter-spacing: 0.1em;
+}
+
+.quantumBitsMeta {
+  font-size: 0.58rem;
+  color: #6ee7b7;
+  letter-spacing: 0;
+}
+
+.quantumWinner {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fde68a;
+  margin: 0 0 0.2rem;
+}
+
+.quantumNote {
+  font-size: 0.58rem;
+  color: #94a3b8;
+  margin: 0;
+}

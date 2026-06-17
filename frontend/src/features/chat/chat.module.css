@@ -1,0 +1,275 @@
+/* ── Full-height layout ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #f0f2f5;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 0 1rem;
+  height: 56px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.back {
+  font-size: 1.75rem;
+  color: #f60;
+  text-decoration: none;
+  line-height: 1;
+  padding: 0 .25rem;
+}
+
+.headerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.headerTitle {
+  font-size: .95rem;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerPrice {
+  font-size: .8rem;
+  color: #f60;
+  font-weight: 600;
+}
+
+/* ── Product summary bar ── */
+.productBar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem 1rem;
+  background: #fffbf7;
+  border-bottom: 1px solid #ffe0c0;
+  flex-shrink: 0;
+}
+
+.productBarThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.productBarText {
+  flex: 1;
+  min-width: 0;
+}
+
+.productBarTitle {
+  font-size: .85rem;
+  font-weight: 600;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productBarPrice {
+  font-size: .8rem;
+  color: #f60;
+  font-weight: 700;
+}
+
+.productBarLink {
+  font-size: .8rem;
+  color: #f60;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid #f60;
+  border-radius: 12px;
+  padding: .2rem .6rem;
+}
+
+/* ── Message area ── */
+.messageArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.empty {
+  text-align: center;
+  color: #aaa;
+  font-size: .875rem;
+  margin-top: 3rem;
+}
+
+.errCenter {
+  text-align: center;
+  color: #c00;
+  padding: 2rem;
+}
+
+/* ── Date separator ── */
+.dateSep {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .75rem 0;
+}
+
+.dateSep::before,
+.dateSep::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+
+.dateSep span {
+  font-size: .75rem;
+  color: #999;
+  white-space: nowrap;
+}
+
+/* ── Message rows ── */
+.rowMine,
+.rowTheirs {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+  margin: .35rem 0;
+}
+
+.rowMine {
+  flex-direction: row-reverse;
+}
+
+.rowTheirs {
+  flex-direction: row;
+}
+
+/* ── Avatar ── */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f60;
+  color: #fff;
+  font-weight: 700;
+  font-size: .875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Bubbles ── */
+.bubbleMine,
+.bubbleTheirs {
+  max-width: 72%;
+  padding: .55rem .8rem;
+  border-radius: 18px;
+  position: relative;
+}
+
+.bubbleMine {
+  background: #f60;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.bubbleTheirs {
+  background: #fff;
+  color: #111;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.senderName {
+  font-size: .7rem;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: .15rem;
+}
+
+.bubbleBody {
+  font-size: .9375rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubbleMine .bubbleBody {
+  color: #fff;
+}
+
+.bubbleTime {
+  font-size: .68rem;
+  text-align: right;
+  margin-top: .25rem;
+  opacity: .7;
+}
+
+/* ── Input area ── */
+.inputArea {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+  padding: .6rem .75rem;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.textarea {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: .5rem .9rem;
+  font-size: .9375rem;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color .2s;
+}
+
+.textarea:focus {
+  border-color: #f60;
+}
+
+.sendBtn {
+  padding: .5rem 1.1rem;
+  background: #f60;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: .875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .2s;
+  flex-shrink: 0;
+}
+
+.sendBtn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}

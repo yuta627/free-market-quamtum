@@ -1,0 +1,609 @@
+/* ── Layout ── */
+.page {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* ── Header ── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 56px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f60;
+  text-decoration: none;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.userName {
+  font-size: .875rem;
+  color: #555;
+}
+
+.btnPrimary {
+  padding: .4rem 1rem;
+  background: #f60;
+  color: #fff;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: .875rem;
+  text-decoration: none;
+}
+
+/* ── List page ── */
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.listHeader {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+.listHeader h2 {
+  font-size: 1.1rem;
+  color: #111;
+}
+
+.count {
+  font-size: .875rem;
+  color: #888;
+  font-weight: 400;
+}
+
+.status {
+  text-align: center;
+  color: #888;
+  padding: 3rem 0;
+}
+
+.error {
+  text-align: center;
+  color: #c00;
+  padding: 2rem 0;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  transition: transform .15s, box-shadow .15s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+}
+
+.cardImage {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.cardImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noImage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  color: #aaa;
+}
+
+.cardBody {
+  padding: .5rem .75rem .75rem;
+}
+
+.cardTitle {
+  font-size: .875rem;
+  font-weight: 600;
+  color: #111;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: .25rem;
+}
+
+.cardCondition {
+  font-size: .75rem;
+  color: #888;
+  margin-bottom: .25rem;
+}
+
+.cardPrice {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111;
+}
+
+/* ── Detail page ── */
+.detailMain {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem calc(90px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 640px) {
+  .detailMain { grid-template-columns: 1fr 1fr; }
+}
+
+.mainImage {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mainImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnails {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.thumb, .thumbActive {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.thumbActive {
+  border-color: #f60;
+}
+
+.detailTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: .5rem;
+}
+
+.detailPrice {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #111;
+  margin-bottom: 1.5rem;
+}
+
+.detailMeta {
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: .75rem 0;
+  margin-bottom: 1rem;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  padding: .35rem 0;
+  font-size: .875rem;
+  color: #555;
+}
+
+.metaRow span:first-child { color: #888; }
+
+.onSale { color: #2a9d2a; font-weight: 600; }
+.sold   { color: #c00;    font-weight: 600; }
+
+.description {
+  margin-top: 1rem;
+}
+
+.description h3 {
+  font-size: .9rem;
+  color: #888;
+  margin-bottom: .5rem;
+}
+
+.description p {
+  font-size: .9rem;
+  line-height: 1.7;
+  color: #333;
+  white-space: pre-wrap;
+}
+
+.qaSection {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #eee;
+}
+
+.qaSection h3 {
+  font-size: .9rem;
+  color: #888;
+  margin-bottom: .25rem;
+}
+
+.qaHint {
+  font-size: .78rem;
+  color: #aaa;
+  margin-bottom: .75rem;
+}
+
+.qaHistory {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+
+.qaEntry {
+  background: #f8f8f8;
+  border-radius: 10px;
+  padding: .65rem .8rem;
+}
+
+.qaQuestion {
+  font-size: .85rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 .35rem;
+}
+
+.qaAnswer {
+  font-size: .85rem;
+  line-height: 1.6;
+  color: #555;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.qaForm {
+  display: flex;
+  gap: .5rem;
+}
+
+.qaInput {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: .55rem .75rem;
+  font-size: .875rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.qaInput:focus {
+  border-color: #f60;
+}
+
+.qaSubmitBtn {
+  padding: .55rem 1rem;
+  background: #f60;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .2s;
+}
+
+.qaSubmitBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.buyButton {
+  display: block;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: .85rem;
+  background: #f60;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity .2s;
+}
+
+.buyButton:hover { opacity: .85; }
+
+.buyButton:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* ── Sell / Form page ── */
+.formMain {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.formCard {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.07);
+}
+
+.formCard h1 {
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+  color: #111;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: .875rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.label input,
+.label textarea,
+.label select {
+  padding: .6rem .75rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color .2s;
+  font-family: inherit;
+}
+
+.label input:focus,
+.label textarea:focus,
+.label select:focus {
+  border-color: #f60;
+}
+
+.required {
+  color: #f60;
+  font-size: .75rem;
+  margin-left: .25rem;
+}
+
+.submitBtn {
+  padding: .8rem;
+  background: #f60;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s;
+  margin-top: .5rem;
+}
+
+.submitBtn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.aiRow {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+
+.aiKeywordInput {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: .5rem .75rem;
+  font-size: .875rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.aiKeywordInput:focus {
+  border-color: #f60;
+}
+
+.aiBtn {
+  padding: .5rem .9rem;
+  background: #fff;
+  color: #f60;
+  border: 2px solid #f60;
+  border-radius: 8px;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+
+.aiBtn:hover:not(:disabled) {
+  background: #f60;
+  color: #fff;
+}
+
+.aiBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.formError {
+  background: #fff0f0;
+  color: #c00;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: .5rem .75rem;
+  font-size: .875rem;
+  margin-bottom: .5rem;
+}
+
+.priceRow {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+
+.priceRow input {
+  flex: 1;
+}
+
+.quboBtn {
+  padding: .5rem .9rem;
+  background: linear-gradient(135deg, #6f00ff, #a855f7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .2s;
+}
+
+.quboBtn:hover:not(:disabled) {
+  opacity: .85;
+}
+
+.quboBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.quboResult {
+  margin-top: .6rem;
+  padding: .75rem 1rem;
+  background: linear-gradient(135deg, #f5f0ff, #fdf4ff);
+  border: 1px solid #d8b4fe;
+  border-radius: 10px;
+  font-size: .82rem;
+}
+
+.quboSuggested {
+  font-size: .95rem;
+  color: #6f00ff;
+  margin-bottom: .2rem;
+}
+
+.quboSolver {
+  color: #888;
+  font-size: .72rem;
+  margin-bottom: .15rem;
+}
+
+.quboRef {
+  color: #555;
+  font-size: .75rem;
+}
+
+.modeToggle {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: .25rem;
+}
+
+.modeBtn {
+  flex: 1;
+  padding: .5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: .875rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.modeBtnActive {
+  background: #fff;
+  color: #ff6b35;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+
+.modeBtnAuctionActive {
+  background: #fff;
+  color: #e55a24;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+
+.auctionSubmitBtn {
+  width: 100%;
+  padding: .875rem;
+  background: linear-gradient(135deg, #ff6b35, #e55a24);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: .5rem;
+}
+
+.auctionSubmitBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

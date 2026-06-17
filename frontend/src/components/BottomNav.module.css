@@ -1,0 +1,56 @@
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #999;
+  text-decoration: none;
+  font-size: 0.65rem;
+  font-weight: 500;
+  flex: 1;
+  padding: 6px 0;
+  transition: color 0.15s;
+}
+
+.item:hover {
+  color: #f60;
+}
+
+.active {
+  color: #f60;
+}
+
+.sellBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #f60;
+  background: none;
+  border: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex: 1;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.sellBtn:hover {
+  opacity: 0.75;
+}
