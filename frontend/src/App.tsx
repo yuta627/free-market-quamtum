@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import LoginPage from "./features/auth/LoginPage";
@@ -12,7 +13,7 @@ import AuctionDetailPage from "./pages/AuctionDetailPage";
 import BottomNav from "./components/BottomNav";
 import "./App.css";
 
-function PrivateRoute({ children }: { children: JSX.Element }) {
+function PrivateRoute({ children }: { children: React.ReactElement }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   return user ? children : <Navigate to="/login" replace />;
