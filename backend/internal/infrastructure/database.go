@@ -44,20 +44,31 @@ func NewDB() (*gorm.DB, error) {
 }
 
 // buildDSN は環境変数から DSN を組み立てる。
-// DATABASE_URL が設定されていればそれを優先し、
-// なければ個別の環境変数（DB_HOST 等）から構築する。
+// DATABASE_URL が設定されていればそれを優先する。
+// Cloud SQL（Unix socket）は CLOUD_SQL_CONNECTION_NAME が設定されていれば使用する。
+// それ以外は個別の環境変数（DB_HOST 等）から構築する。
 func buildDSN() string {
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		return url
 	}
 
-	host     := getEnv("DB_HOST", "localhost")
-	port     := getEnv("DB_PORT", "5432")
 	user     := getEnv("DB_USER", "postgres")
 	password := getEnv("DB_PASSWORD", "")
 	dbname   := getEnv("DB_NAME", "fleamarket")
-	sslmode  := getEnv("DB_SSLMODE", "disable")
 	timezone := getEnv("DB_TIMEZONE", "Asia/Tokyo")
+
+	// Cloud SQL Auth Proxy (Unix socket) — Cloud Run での推奨接続方式
+	if instanceName := os.Getenv("CLOUD_SQL_CONNECTION_NAME"); instanceName != "" {
+		socketDir := getEnv("DB_SOCKET_DIR", "/cloudsql")
+		return fmt.Sprintf(
+			"user=%s password=%s dbname=%s host=%s/%s sslmode=disable TimeZone=%s",
+			user, password, dbname, socketDir, instanceName, timezone,
+		)
+	}
+
+	host     := getEnv("DB_HOST", "localhost")
+	port     := getEnv("DB_PORT", "5432")
+	sslmode  := getEnv("DB_SSLMODE", "disable")
 
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
