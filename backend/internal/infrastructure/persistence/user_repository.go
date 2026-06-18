@@ -37,3 +37,13 @@ func (r *UserRepository) FindByID(id uint) (*domain.User, error) {
 	}
 	return &user, err
 }
+
+func (r *UserRepository) UpdateAddress(id uint, postalCode, prefecture, city, addressLine, building string) error {
+	return r.db.Model(&domain.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"postal_code":  postalCode,
+		"prefecture":   prefecture,
+		"city":         city,
+		"address_line": addressLine,
+		"building":     building,
+	}).Error
+}

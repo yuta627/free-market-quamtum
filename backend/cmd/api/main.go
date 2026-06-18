@@ -26,6 +26,7 @@ func main() {
 	msgRepo := persistence.NewMessageRepository(db)
 	likeRepo := persistence.NewLikeRepository(db)
 
+	userH := handler.NewUserHandler(userRepo)
 	authUC := usecase.NewAuthUsecase(userRepo)
 	productUC := usecase.NewProductUsecase(productRepo)
 	msgUC := usecase.NewMessageUsecase(msgRepo, productRepo)
@@ -47,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Printf("warning: stripe client not available: %v", err)
 	}
-	paymentUC := usecase.NewPaymentUsecase(stripeClient, productRepo, notifRepo)
+	paymentUC := usecase.NewPaymentUsecase(stripeClient, productRepo, notifRepo, userRepo)
 	paymentH := handler.NewPaymentHandler(paymentUC)
 
 	likeUC := usecase.NewLikeUsecase(likeRepo, productRepo)
@@ -65,7 +66,7 @@ func main() {
 	auctionH := handler.NewAuctionHandler(auctionUC)
 	productH := handler.NewProductHandler(productUC, auctionRepo)
 
-	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH, notifH)
+	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH, notifH, userH)
 
 	port := os.Getenv("PORT")
 	if port == "" {

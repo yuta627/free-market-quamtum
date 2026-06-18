@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *handler.MessageHandler, aiH *handler.AIHandler, paymentH *handler.PaymentHandler, likeH *handler.LikeHandler, recH *handler.RecommendationHandler, quantumH *handler.QuantumHandler, auctionH *handler.AuctionHandler, notifH *handler.NotificationHandler) *gin.Engine {
+func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *handler.MessageHandler, aiH *handler.AIHandler, paymentH *handler.PaymentHandler, likeH *handler.LikeHandler, recH *handler.RecommendationHandler, quantumH *handler.QuantumHandler, auctionH *handler.AuctionHandler, notifH *handler.NotificationHandler, userH *handler.UserHandler) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -67,8 +67,10 @@ func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *han
 		me := api.Group("/me")
 		me.Use(handler.AuthMiddleware())
 		{
+			me.GET("", userH.GetMe)
 			me.GET("/products", productH.ListMine)
 			me.GET("/purchases", productH.ListPurchased)
+			me.PATCH("/address", userH.UpdateAddress)
 		}
 
 		notifications := api.Group("/notifications")

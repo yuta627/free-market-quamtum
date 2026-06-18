@@ -17,10 +17,11 @@ type PaymentUsecase struct {
 	stripe           *infrastructure.StripeClient
 	productRepo      *persistence.ProductRepository
 	notificationRepo *persistence.NotificationRepository
+	userRepo         *persistence.UserRepository
 }
 
-func NewPaymentUsecase(stripe *infrastructure.StripeClient, productRepo *persistence.ProductRepository, notificationRepo *persistence.NotificationRepository) *PaymentUsecase {
-	return &PaymentUsecase{stripe: stripe, productRepo: productRepo, notificationRepo: notificationRepo}
+func NewPaymentUsecase(stripe *infrastructure.StripeClient, productRepo *persistence.ProductRepository, notificationRepo *persistence.NotificationRepository, userRepo *persistence.UserRepository) *PaymentUsecase {
+	return &PaymentUsecase{stripe: stripe, productRepo: productRepo, notificationRepo: notificationRepo, userRepo: userRepo}
 }
 
 type CheckoutOutput struct {
@@ -104,10 +105,23 @@ func (u *PaymentUsecase) ConfirmPurchase(productID, buyerID uint, paymentIntentI
 	}
 
 	if u.notificationRepo != nil {
+		body := fmt.Sprintf("「%s」が購入されました。¥%d\n\n", full.Title, full.Price)
+
+		buyer, _ := u.userRepo.FindByID(buyerID)
+		if buyer != nil && buyer.PostalCode != "" {
+			body += fmt.Sprintf("【配送先】\n〒%s %s%s%s", buyer.PostalCode, buyer.Prefecture, buyer.City, buyer.AddressLine)
+			if buyer.Building != "" {
+				body += " " + buyer.Building
+			}
+			body += "\n\n【配送手順】\n1. 商品を梱包してください\n2. 配送業者（ヤマト・佐川など）に持ち込むか集荷を依頼してください\n3. 上記住所に発送してください\n4. 追跡番号が発行されたら購入者にメッセージで連絡してください"
+		} else {
+			body += "※ 購入者がまだ住所を登録していません。メッセージで住所を確認してください。"
+		}
+
 		_ = u.notificationRepo.Create(&domain.Notification{
 			UserID: full.SellerID,
 			Title:  "商品が売れました",
-			Body:   fmt.Sprintf("「%s」が購入されました。¥%d", full.Title, full.Price),
+			Body:   body,
 		})
 	}
 
