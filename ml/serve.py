@@ -13,6 +13,7 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 import faiss
+import pennylane as qml
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
@@ -188,8 +189,51 @@ except FileNotFoundError:
 
 print("Ready.")
 
+# ── QRNG (PennyLane) ──
+_qrng_dev = qml.device("default.qubit", wires=8)
+
+@qml.qnode(_qrng_dev)
+def _qrng_circuit(n_qubits: int):
+    for i in range(n_qubits):
+        qml.Hadamard(wires=i)
+    return [qml.sample(qml.PauliZ(i)) for i in range(n_qubits)]
+
+def quantum_randint(low: int, high: int):
+    n = high - low
+    if n <= 0:
+        return low, [], 0, 0
+    n_qubits = max(n.bit_length(), 1)
+    while True:
+        samples = _qrng_circuit(n_qubits)
+        bits = [int((1 - int(s)) / 2) for s in samples[:n_qubits]]
+        value = int("".join(str(b) for b in bits), 2)
+        if value < n:
+            return low + value, bits, n_qubits, n_qubits
+
 
 # ── routes ──
+
+class QuantumRandomRequest(BaseModel):
+    low: int = 0
+    high: int = 100
+    purpose: str = ""
+
+class QuantumRandomResponse(BaseModel):
+    value: int
+    bits: List[int]
+    n_qubits: int
+    circuit_depth: int
+    purpose: str
+
+@app.post("/quantum/random", response_model=QuantumRandomResponse)
+def quantum_random(req: QuantumRandomRequest):
+    if req.high <= req.low:
+        raise HTTPException(status_code=400, detail="high must be greater than low")
+    value, bits, n_qubits, depth = quantum_randint(req.low, req.high)
+    return QuantumRandomResponse(
+        value=value, bits=bits, n_qubits=n_qubits,
+        circuit_depth=depth, purpose=req.purpose,
+    )
 
 @app.get("/health")
 def health():
