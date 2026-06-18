@@ -11,6 +11,7 @@ import Likes from "./pages/Likes";
 import MyPage from "./pages/MyPage";
 import AuctionDetailPage from "./pages/AuctionDetailPage";
 import BottomNav from "./components/BottomNav";
+import PaymentCompletePage from "./pages/PaymentCompletePage";
 import "./App.css";
 
 function PrivateRoute({ children }: { children: React.ReactElement }) {
@@ -51,6 +52,7 @@ function App() {
           </Route>
 
           {/* BottomNavなし */}
+          <Route path="/payment-complete" element={<PaymentCompletePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route

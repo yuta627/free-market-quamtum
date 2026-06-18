@@ -92,6 +92,9 @@ function PaymentForm({
 
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/payment-complete?product_id=${productId}`,
+      },
       redirect: "if_required",
     });
 
