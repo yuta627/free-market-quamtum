@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir \
     faiss-cpu \
     numpy \
     pandas \
+    pyarrow \
     pennylane
 COPY . .
 EXPOSE 8001
