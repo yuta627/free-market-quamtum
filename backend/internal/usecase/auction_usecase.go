@@ -73,14 +73,19 @@ func (u *AuctionUsecase) GetByID(id uint) (*domain.Auction, error) {
 	return a, nil
 }
 
+var ErrNotSeller = errors.New("only the seller can finalize the auction")
+
 // FinalizeAuction はオークションを終了し、QRNGで同額最高入札者の中から落札者を決定する。
-func (u *AuctionUsecase) FinalizeAuction(auctionID uint) (*domain.Auction, error) {
+func (u *AuctionUsecase) FinalizeAuction(auctionID, callerID uint) (*domain.Auction, error) {
 	a, err := u.auctionRepo.FindByID(auctionID)
 	if err != nil {
 		return nil, err
 	}
 	if a == nil {
 		return nil, ErrAuctionNotFound
+	}
+	if a.Product.SellerID != callerID {
+		return nil, ErrNotSeller
 	}
 	if a.Status != "active" {
 		return nil, domain.ErrAlreadyFinalized

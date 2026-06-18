@@ -102,16 +102,19 @@ func (h *AuctionHandler) GetByID(c *gin.Context) {
 }
 
 func (h *AuctionHandler) Finalize(c *gin.Context) {
+	userID, _ := c.Get(ContextKeyUserID)
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 
-	a, err := h.uc.FinalizeAuction(uint(id))
+	a, err := h.uc.FinalizeAuction(uint(id), userID.(uint))
 	switch {
 	case errors.Is(err, usecase.ErrAuctionNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "オークションが見つかりません"})
+	case errors.Is(err, usecase.ErrNotSeller):
+		c.JSON(http.StatusForbidden, gin.H{"error": "出品者のみ落札者を決定できます"})
 	case errors.Is(err, domain.ErrAlreadyFinalized):
 		c.JSON(http.StatusConflict, gin.H{"error": "このオークションはすでに終了しています"})
 	case errors.Is(err, domain.ErrAuctionNotEnded):

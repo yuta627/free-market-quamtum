@@ -172,6 +172,7 @@ export default function Home() {
                 {auctions.map((a) => {
                   const remaining = formatRemaining(a.ends_at);
                   const isEnded = remaining === "終了" && a.status === "active" && a.bid_count > 0;
+                  const isSeller = user && user.id === a.product.seller.id;
                   const qResult = qrngResults[a.id];
                   const isLoading = qrngLoading[a.id];
 
@@ -207,7 +208,7 @@ export default function Home() {
                         </div>
                       </Link>
 
-                      {isEnded && !qResult && (
+                      {isEnded && isSeller && !qResult && (
                         <button className={styles.quantumBtn} onClick={handleQuantumDraw} disabled={isLoading}>
                           {isLoading ? "⏳ 量子計算中..." : "⚛️ 量子抽選で落札者決定"}
                         </button>
