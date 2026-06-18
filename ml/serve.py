@@ -1,9 +1,14 @@
 """
-Two-Tower モデルの item embedding を使った類似アイテム推薦の推論API。
+ハイブリッド量子古典リコメンデーション推論API
+
+リコメンデーションは古典Two-Tower → PCA → PQC の量子強化 embedding のみを使用。
+（古典単体・QML単体の並列運用は廃止。詳細は train_qml.py 参照）
 
 エンドポイント:
-  GET  /recommendations/{item_id}   MerRec item_id でFAISS検索 (既存商品)
-  POST /recommendations/by-meta     タイトル・価格でBoW最近傍を探しFAISS検索 (新規商品)
+  GET  /recommendations/{item_id}   量子強化 embedding で FAISS 検索
+  POST /recommendations/by-meta     タイトル・価格から BoW 代理検索 → FAISS
+  POST /quantum/random              PennyLane QRNG (オークション同額抽選用)
+  GET  /health
 """
 
 import re
@@ -17,11 +22,10 @@ import pennylane as qml
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
-EMBEDDINGS_PATH = "data/item_embeddings_v2.csv"
-QML_EMBEDDINGS_PATH = "data/qml_embeddings.csv"
+HYBRID_EMBEDDINGS_PATH = "data/qml_embeddings.csv"
 SAMPLE_PATH = "data/merrec_sample_100k.parquet"
 
-app = FastAPI(title="Flea Market Recommendation API", version="0.3.0")
+app = FastAPI(title="Flea Market Recommendation API", version="1.0.0")
 
 
 # ── pydantic models ──
@@ -50,8 +54,8 @@ class MetaRecommendationResponse(BaseModel):
 
 # ── 起動時に1回だけ読み込み ──
 
-print("Loading item embeddings...")
-emb_df = pd.read_csv(EMBEDDINGS_PATH)
+print("Loading hybrid QML embeddings...")
+emb_df = pd.read_csv(HYBRID_EMBEDDINGS_PATH)
 item_ids = emb_df["item_id"].to_numpy()
 vectors = np.ascontiguousarray(
     emb_df.drop(columns=["item_id", "is_cold_start"]).to_numpy(dtype=np.float32)
@@ -64,6 +68,7 @@ item_id_to_pos = {int(iid): i for i, iid in enumerate(item_ids)}
 index = faiss.IndexFlatIP(vectors.shape[1])
 index.add(vectors)
 print(f"FAISS index built: {index.ntotal:,} vectors, dim={vectors.shape[1]}")
+print("  (ハイブリッド量子古典 embedding: 古典Two-Tower → PCA → PQC)")
 
 print("Loading item metadata...")
 meta = (
@@ -73,6 +78,7 @@ meta = (
 )
 
 print("Building content index for cold-start lookup...")
+meta_item_ids = meta.index.to_numpy()
 meta_names = meta["name"].fillna("").tolist()
 meta_prices_log = np.log1p(meta["price"].fillna(0).to_numpy(dtype=np.float32))
 
@@ -83,7 +89,6 @@ def tokenize(text: str):
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
-# 上位2000語の語彙でBoWベクトルを構築
 token_counter: Counter = Counter()
 for name in meta_names:
     token_counter.update(set(tokenize(name)))
@@ -101,7 +106,8 @@ def name_to_bow(text: str) -> np.ndarray:
     return vec
 
 
-def find_closest_meta_pos(title: str, price: float) -> int:
+def find_closest_meta_item_id(title: str, price: float) -> int:
+    """BoW でメタデータから最近傍 item_id を返す。"""
     bow = name_to_bow(title)
     bow_norm = np.linalg.norm(bow)
     if bow_norm > 0:
@@ -114,20 +120,20 @@ def find_closest_meta_pos(title: str, price: float) -> int:
     price_std = float(meta_prices_log.std()) + 1e-6
 
     for start in range(0, len(meta_names), CHUNK):
-        chunk_names = meta_names[start:start + CHUNK]
+        chunk_names  = meta_names[start:start + CHUNK]
         chunk_prices = meta_prices_log[start:start + CHUNK]
-        bows = np.stack([name_to_bow(n) for n in chunk_names])
+        bows  = np.stack([name_to_bow(n) for n in chunk_names])
         norms = np.linalg.norm(bows, axis=1, keepdims=True) + 1e-8
-        bows = bows / norms
-        text_sim = bows @ bow
+        bows  = bows / norms
+        text_sim  = bows @ bow
         price_sim = np.clip(1.0 - np.abs(chunk_prices - price_log) / (price_std * 3 + 1e-8), 0, 1)
         score = text_sim * 0.8 + price_sim * 0.2
         local_best = int(np.argmax(score))
         if score[local_best] > best_score:
             best_score = score[local_best]
-            best_pos = start + local_best
+            best_pos   = start + local_best
 
-    return best_pos
+    return int(meta_item_ids[best_pos])
 
 
 def search_by_vector(query_vec: np.ndarray, k: int, exclude_pos: Optional[int] = None) -> List[SimilarItem]:
@@ -154,42 +160,11 @@ def search_by_vector(query_vec: np.ndarray, k: int, exclude_pos: Optional[int] =
     return results
 
 
-# ── QML インデックス (学習完了後にロード) ──
-qml_index = None
-qml_item_ids = None
-qml_vectors = None
-qml_id_to_pos: dict = {}
-# QML アイテムの名前・価格 (BoW フォールバック用)
-qml_meta_names: list = []
-qml_meta_prices: np.ndarray = np.array([])
-
-try:
-    print("Loading QML embeddings...")
-    qml_df = pd.read_csv(QML_EMBEDDINGS_PATH)
-    qml_item_ids = qml_df["item_id"].to_numpy()
-    qml_vectors = np.ascontiguousarray(
-        qml_df.drop(columns=["item_id", "is_cold_start"]).to_numpy(dtype=np.float32)
-    )
-    faiss.normalize_L2(qml_vectors)
-    qml_index = faiss.IndexFlatIP(qml_vectors.shape[1])
-    qml_index.add(qml_vectors)
-    qml_id_to_pos = {int(iid): i for i, iid in enumerate(qml_item_ids)}
-    # QML アイテムのメタ情報をキャッシュ
-    for iid in qml_item_ids:
-        row = meta.loc[int(iid)] if int(iid) in meta.index else None
-        qml_meta_names.append(str(row["name"]) if row is not None else "")
-        qml_meta_prices.tolist()  # placeholder
-    qml_meta_prices = np.log1p(np.array(
-        [float(meta.loc[int(iid)]["price"]) if int(iid) in meta.index else 0.0 for iid in qml_item_ids],
-        dtype=np.float32
-    ))
-    print(f"QML FAISS index built: {qml_index.ntotal:,} vectors, dim={qml_vectors.shape[1]}")
-except FileNotFoundError:
-    print(f"QML embeddings not found ({QML_EMBEDDINGS_PATH}). Run train_qml.py first.")
-
 print("Ready.")
 
-# ── QRNG (PennyLane) ──
+
+# ── QRNG (PennyLane) — オークション同額抽選用 ──
+
 _qrng_dev = qml.device("default.qubit", wires=8)
 
 @qml.qnode(_qrng_dev)
@@ -240,7 +215,8 @@ def health():
     return {
         "status": "ok",
         "n_items": int(index.ntotal),
-        "qml_n_items": int(qml_index.ntotal) if qml_index else 0,
+        "embedding_type": "hybrid_quantum_classical",
+        "pipeline": "Two-Tower(32d) → PCA(6d) → PQC(6d)",
     }
 
 
@@ -257,100 +233,12 @@ def recommendations(item_id: int, k: int = Query(default=10, ge=1, le=50)):
 @app.post("/recommendations/by-meta", response_model=MetaRecommendationResponse)
 def recommendations_by_meta(req: MetaRecommendationRequest):
     k = max(1, min(req.k, 50))
-    proxy_pos = find_closest_meta_pos(req.title, req.price)
+
+    # BoW でメタデータから最近傍 item_id を特定 → 量子強化 embedding で検索
+    proxy_item_id = find_closest_meta_item_id(req.title, req.price)
+    proxy_pos = item_id_to_pos.get(proxy_item_id)
+    if proxy_pos is None:
+        raise HTTPException(status_code=404, detail="No matching item in hybrid index")
+
     results = search_by_vector(vectors[proxy_pos: proxy_pos + 1], k, exclude_pos=proxy_pos)
     return MetaRecommendationResponse(results=results)
-
-
-# ── QML エンドポイント ──
-
-def _find_closest_qml_pos(title: str, price: float) -> int:
-    """QML インデックス内の 5,000 件から BoW で最近傍を探す。"""
-    bow = name_to_bow(title)
-    bow_norm = np.linalg.norm(bow)
-    if bow_norm > 0:
-        bow = bow / bow_norm
-
-    CHUNK = 500
-    best_score = -1.0
-    best_pos = 0
-    price_log = float(np.log1p(max(price, 0)))
-    price_std = float(qml_meta_prices.std()) + 1e-6
-
-    for start in range(0, len(qml_meta_names), CHUNK):
-        chunk_names = qml_meta_names[start:start + CHUNK]
-        chunk_prices = qml_meta_prices[start:start + CHUNK]
-        bows = np.stack([name_to_bow(n) for n in chunk_names])
-        norms = np.linalg.norm(bows, axis=1, keepdims=True) + 1e-8
-        bows = bows / norms
-        text_sim = bows @ bow
-        price_sim = np.clip(1.0 - np.abs(chunk_prices - price_log) / (price_std * 3 + 1e-8), 0, 1)
-        score = text_sim * 0.8 + price_sim * 0.2
-        local_best = int(np.argmax(score))
-        if score[local_best] > best_score:
-            best_score = score[local_best]
-            best_pos = start + local_best
-
-    return best_pos
-
-
-@app.get("/recommendations/qml/{item_id}", response_model=RecommendationResponse)
-def recommendations_qml(item_id: int, k: int = Query(default=10, ge=1, le=50)):
-    """
-    PQC (Parameterized Quantum Circuit) で生成した embedding による推薦。
-
-    item_id が QML インデックスにない場合 (アプリ新規商品 / DB ID):
-      BoW でタイトル類似度から QML 内最近傍を代理検索し推薦する。
-
-    NISQ 制約:
-      - 6 量子ビット / 5,000 商品のみ対応
-      - 古典 Two-Tower より embedding 次元が低い (6 vs 32)
-
-    FTQC 完成後:
-      - 64+ 量子ビット / 全商品対応
-      - 量子カーネル法で類似度計算を O(log N) に短縮
-    """
-    if qml_index is None:
-        raise HTTPException(status_code=503, detail="QML index not loaded. Run train_qml.py first.")
-
-    pos = qml_id_to_pos.get(item_id)
-
-    # QML インデックスに存在しない場合: メタ情報で代理検索
-    if pos is None:
-        # まず古典インデックスで item_id を探してタイトル・価格を取得
-        classical_pos = item_id_to_pos.get(item_id)
-        if classical_pos is not None:
-            candidate_id_cl = int(item_ids[classical_pos])
-            row_cl = meta.loc[candidate_id_cl] if candidate_id_cl in meta.index else None
-            proxy_title = str(row_cl["name"]) if row_cl is not None else ""
-            proxy_price = float(row_cl["price"]) if row_cl is not None else 0.0
-        else:
-            # DB 独自商品: item_id そのものをメタ検索
-            row_cl = meta.loc[item_id] if item_id in meta.index else None
-            proxy_title = str(row_cl["name"]) if row_cl is not None else ""
-            proxy_price = float(row_cl["price"]) if row_cl is not None else 0.0
-
-        pos = _find_closest_qml_pos(proxy_title, proxy_price)
-
-    q = np.ascontiguousarray(qml_vectors[pos: pos + 1])
-    faiss.normalize_L2(q)
-    scores, indices = qml_index.search(q, k + 1)
-
-    results = []
-    for score, idx in zip(scores[0], indices[0]):
-        if idx == -1 or idx == pos:
-            continue
-        candidate_id = int(qml_item_ids[idx])
-        row = meta.loc[candidate_id] if candidate_id in meta.index else None
-        results.append(SimilarItem(
-            item_id=candidate_id,
-            score=float(score),
-            name=(str(row["name"]) if row is not None else None),
-            category=(str(row["c0_name"]) if row is not None else None),
-            price=(float(row["price"]) if row is not None else None),
-            is_cold_start=False,
-        ))
-        if len(results) >= k:
-            break
-
-    return RecommendationResponse(query_item_id=item_id, results=results)
