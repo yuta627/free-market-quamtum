@@ -31,7 +31,6 @@ func main() {
 	msgUC := usecase.NewMessageUsecase(msgRepo, productRepo)
 
 	authH := handler.NewAuthHandler(authUC)
-	productH := handler.NewProductHandler(productUC)
 	msgH := handler.NewMessageHandler(msgUC)
 
 	geminiClient, err := infrastructure.NewGeminiClient()
@@ -61,6 +60,7 @@ func main() {
 	auctionRepo := persistence.NewAuctionRepository(db)
 	auctionUC := usecase.NewAuctionUsecase(auctionRepo, productRepo, qrngClient)
 	auctionH := handler.NewAuctionHandler(auctionUC)
+	productH := handler.NewProductHandler(productUC, auctionRepo)
 
 	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH)
 

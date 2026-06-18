@@ -40,6 +40,7 @@ func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *han
 		{
 			products.GET("", productH.List)
 			products.GET("/:id", productH.GetByID)
+			products.GET("/:id/auction", productH.GetAuction)
 			products.GET("/:id/recommendations", recH.GetRecommendations)
 			products.GET("/:id/recommendations/qml", recH.GetQMLRecommendations)
 			products.POST("/:id/ask", aiH.AskQuestion)

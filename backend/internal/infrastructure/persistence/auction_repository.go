@@ -60,6 +60,16 @@ func (r *AuctionRepository) ListActive(limit, offset int) ([]domain.Auction, int
 	return auctions, total, err
 }
 
+// FindByProductID は product_id に紐づくオークションを返す。
+func (r *AuctionRepository) FindByProductID(productID uint) (*domain.Auction, error) {
+	var a domain.Auction
+	err := r.db.Where("product_id = ?", productID).First(&a).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &a, err
+}
+
 // FindTopBids は最高額の入札をすべて返す（同額タイの場合に複数返る）。
 func (r *AuctionRepository) FindTopBids(auctionID uint) ([]domain.Bid, error) {
 	var a domain.Auction

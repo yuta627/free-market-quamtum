@@ -13,11 +13,16 @@ import (
 )
 
 type ProductHandler struct {
-	productUC *usecase.ProductUsecase
+	productUC   *usecase.ProductUsecase
+	auctionRepo auctionFinder
 }
 
-func NewProductHandler(uc *usecase.ProductUsecase) *ProductHandler {
-	return &ProductHandler{productUC: uc}
+type auctionFinder interface {
+	FindByProductID(productID uint) (*domain.Auction, error)
+}
+
+func NewProductHandler(uc *usecase.ProductUsecase, ar auctionFinder) *ProductHandler {
+	return &ProductHandler{productUC: uc, auctionRepo: ar}
 }
 
 type createProductRequest struct {
@@ -117,6 +122,25 @@ func (h *ProductHandler) ListPurchased(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"products": products})
+}
+
+// GetAuction は product_id に紐づくオークションIDを返す。オークション商品かどうかの判定に使う。
+func (h *ProductHandler) GetAuction(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	a, err := h.auctionRepo.FindByProductID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "取得に失敗しました"})
+		return
+	}
+	if a == nil {
+		c.JSON(http.StatusNotFound, gin.H{"auction_id": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"auction_id": a.ID})
 }
 
 func (h *ProductHandler) Purchase(c *gin.Context) {

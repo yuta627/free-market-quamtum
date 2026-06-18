@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Heart } from "lucide-react";
 import { getProduct, type Product, CONDITION_LABELS } from "../../api/products";
 import { askProductQuestion } from "../../api/ai";
@@ -25,6 +25,7 @@ function parseImageURLs(raw: string): string[] {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,11 +40,21 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    // オークション商品かチェックしてリダイレクト
+    import("../../api/client").then(({ default: client }) => {
+      client.get<{ auction_id: number | null }>(`/products/${id}/auction`)
+        .then((res) => {
+          if (res.data.auction_id) {
+            navigate(`/auctions/${res.data.auction_id}`, { replace: true });
+          }
+        })
+        .catch(() => {});
+    });
     getProduct(Number(id))
       .then(setProduct)
       .catch(() => setError("商品の取得に失敗しました"))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     if (!user || !id) return;
