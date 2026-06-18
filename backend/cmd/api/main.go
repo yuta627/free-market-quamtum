@@ -40,11 +40,14 @@ func main() {
 	aiUC := usecase.NewAIUsecase(geminiClient, productRepo)
 	aiH := handler.NewAIHandler(aiUC)
 
+	notifRepo := persistence.NewNotificationRepository(db)
+	notifH := handler.NewNotificationHandler(notifRepo)
+
 	stripeClient, err := infrastructure.NewStripeClient()
 	if err != nil {
 		log.Printf("warning: stripe client not available: %v", err)
 	}
-	paymentUC := usecase.NewPaymentUsecase(stripeClient, productRepo)
+	paymentUC := usecase.NewPaymentUsecase(stripeClient, productRepo, notifRepo)
 	paymentH := handler.NewPaymentHandler(paymentUC)
 
 	likeUC := usecase.NewLikeUsecase(likeRepo, productRepo)
@@ -62,7 +65,7 @@ func main() {
 	auctionH := handler.NewAuctionHandler(auctionUC)
 	productH := handler.NewProductHandler(productUC, auctionRepo)
 
-	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH)
+	r := router.New(authH, productH, msgH, aiH, paymentH, likeH, recH, quantumH, auctionH, notifH)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -14,12 +14,13 @@ var ErrPaymentNotSucceeded = errors.New("payment has not succeeded")
 var ErrPaymentMismatch = errors.New("payment does not match this product/buyer")
 
 type PaymentUsecase struct {
-	stripe      *infrastructure.StripeClient
-	productRepo *persistence.ProductRepository
+	stripe           *infrastructure.StripeClient
+	productRepo      *persistence.ProductRepository
+	notificationRepo *persistence.NotificationRepository
 }
 
-func NewPaymentUsecase(stripe *infrastructure.StripeClient, productRepo *persistence.ProductRepository) *PaymentUsecase {
-	return &PaymentUsecase{stripe: stripe, productRepo: productRepo}
+func NewPaymentUsecase(stripe *infrastructure.StripeClient, productRepo *persistence.ProductRepository, notificationRepo *persistence.NotificationRepository) *PaymentUsecase {
+	return &PaymentUsecase{stripe: stripe, productRepo: productRepo, notificationRepo: notificationRepo}
 }
 
 type CheckoutOutput struct {
@@ -101,5 +102,14 @@ func (u *PaymentUsecase) ConfirmPurchase(productID, buyerID uint, paymentIntentI
 	if err != nil {
 		return nil, fmt.Errorf("reloading product: %w", err)
 	}
+
+	if u.notificationRepo != nil {
+		_ = u.notificationRepo.Create(&domain.Notification{
+			UserID: full.SellerID,
+			Title:  "商品が売れました",
+			Body:   fmt.Sprintf("「%s」が購入されました。¥%d", full.Title, full.Price),
+		})
+	}
+
 	return full, nil
 }

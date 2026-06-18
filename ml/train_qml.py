@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import faiss
 import pennylane as qml
 from sklearn.decomposition import PCA
 
@@ -34,12 +33,12 @@ QML_EMBEDDINGS_OUT = "data/qml_embeddings.csv"
 N_QUBITS  = 6
 N_LAYERS  = 2
 BATCH_SIZE = 32
-EPOCHS     = 5
+EPOCHS     = 3
 LR         = 1e-3
-TRAIN_ITEMS = 10_000   # PQC学習サンプル数（全件は数時間かかる）
+TRAIN_ITEMS = 500      # PQC学習サンプル数（ローカルCPUシミュレーション上限）
 K_SIMILAR   = 3        # ポジティブペアの近傍数
 MARGIN      = 0.3      # triplet loss マージン
-INFER_BATCH = 32
+INFER_BATCH = 64
 SEED = 42
 
 rng = np.random.default_rng(SEED)
@@ -102,14 +101,16 @@ def main():
     scale = np.abs(pca_vectors).max(axis=0) + 1e-8
     pca_scaled = (pca_vectors / scale * np.pi).astype(np.float32)
 
-    # ── Step 3: 古典 FAISS でポジティブペア構築 ──
+    # ── Step 3: 古典コサイン類似度でポジティブペア構築 ──
     print("Building positive pairs from classical similarity...")
-    cl_index = faiss.IndexFlatIP(vectors_normed.shape[1])
-    cl_index.add(vectors_normed)
-
     train_idx = rng.choice(len(item_ids), min(TRAIN_ITEMS, len(item_ids)), replace=False)
-    _, pos_nn = cl_index.search(vectors_normed[train_idx], K_SIMILAR + 1)
-    pos_nn = pos_nn[:, 1:]  # 自分自身を除外 → (TRAIN_ITEMS, K_SIMILAR)
+
+    # numpy でサブセット内のコサイン類似度行列を計算（FAISSを使わない）
+    train_vecs = vectors_normed[train_idx]  # (TRAIN_ITEMS, 32)
+    sim_matrix = train_vecs @ train_vecs.T  # (TRAIN_ITEMS, TRAIN_ITEMS)
+    np.fill_diagonal(sim_matrix, -1.0)      # 自分自身を除外
+    # 各アイテムの最近傍 K_SIMILAR 件のローカルインデックスを取得
+    pos_nn = np.argsort(sim_matrix, axis=1)[:, -K_SIMILAR:][:, ::-1]  # (TRAIN_ITEMS, K_SIMILAR)
     print(f"  training items: {len(train_idx):,} / {len(item_ids):,}")
 
     # ── Step 4: PQC 学習（Triplet Loss） ──
@@ -142,8 +143,9 @@ def main():
             anc_feat = pca_tensor[global_b]
             anc_vec  = model(anc_feat)
 
-            # positive: 古典類似度が高い近傍アイテム
-            pos_global = pos_nn[local_b, 0]
+            # positive: 古典類似度が高い近傍アイテム（train_idx内のローカルインデックス→グローバル変換）
+            pos_local  = pos_nn[local_b, 0]
+            pos_global = train_idx[pos_local]
             pos_vec = model(pca_tensor[pos_global])
 
             # negative: ランダムサンプル
