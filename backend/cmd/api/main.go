@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 
-	"fleamarket-backend/internal/domain"
 	"fleamarket-backend/internal/handler"
 	"fleamarket-backend/internal/infrastructure"
 	"fleamarket-backend/internal/infrastructure/persistence"
@@ -21,8 +20,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("database connection failed: %v", err)
 	}
-	if err := db.AutoMigrate(&domain.User{}, &domain.Notification{}); err != nil {
-		log.Fatalf("auto migration failed: %v", err)
+	// Add address columns to users table if not exist
+	sqlDB, _ := db.DB()
+	for _, col := range []string{"postal_code varchar(10)", "prefecture varchar(20)", "city varchar(100)", "address_line varchar(200)", "building varchar(200)"} {
+		sqlDB.Exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS " + col)
 	}
 
 	userRepo := persistence.NewUserRepository(db)
