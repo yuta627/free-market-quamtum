@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"fleamarket-backend/internal/domain"
 	"fleamarket-backend/internal/handler"
 	"fleamarket-backend/internal/infrastructure"
 	"fleamarket-backend/internal/infrastructure/persistence"
@@ -19,6 +20,9 @@ func main() {
 	db, err := infrastructure.NewDB()
 	if err != nil {
 		log.Fatalf("database connection failed: %v", err)
+	}
+	if err := db.AutoMigrate(&domain.User{}, &domain.Notification{}); err != nil {
+		log.Fatalf("auto migration failed: %v", err)
 	}
 
 	userRepo := persistence.NewUserRepository(db)
