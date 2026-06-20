@@ -43,6 +43,8 @@ func New(authH *handler.AuthHandler, productH *handler.ProductHandler, msgH *han
 			products.GET("/:id/auction", productH.GetAuction)
 			products.GET("/:id/recommendations", recH.GetRecommendations)
 			products.GET("/:id/recommendations/qml", recH.GetQMLRecommendations)
+			products.GET("/:id/recommendations/classical", recH.GetClassicalRecommendations)
+			products.GET("/:id/recommendations/qkernel", recH.GetQKernelRecommendations)
 			products.POST("/:id/ask", aiH.AskQuestion)
 
 			authed := products.Group("")
