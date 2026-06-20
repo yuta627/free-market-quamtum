@@ -29,6 +29,7 @@ from sklearn.decomposition import PCA
 
 CLASSICAL_EMB_PATH = "data/item_embeddings_v2.csv"
 QML_EMBEDDINGS_OUT = "data/qml_embeddings.csv"
+PCA_VECTORS_OUT    = "data/pca_vectors.csv"
 
 N_QUBITS  = 6
 N_LAYERS  = 2
@@ -187,6 +188,12 @@ def main():
     out_df["is_cold_start"] = 0
     out_df.to_csv(QML_EMBEDDINGS_OUT, index=False)
     print(f"  saved {len(out_df):,} hybrid embeddings → {QML_EMBEDDINGS_OUT}")
+
+    # 量子カーネル法用にPCA圧縮済みベクトルも保存
+    pca_df = pd.DataFrame(pca_scaled, columns=[f"pca_{i}" for i in range(N_QUBITS)])
+    pca_df.insert(0, "item_id", item_ids)
+    pca_df.to_csv(PCA_VECTORS_OUT, index=False)
+    print(f"  saved {len(pca_df):,} PCA vectors → {PCA_VECTORS_OUT}  (量子カーネル法用)")
     print("""
 == パイプライン完了 ==
   古典 Two-Tower (32次元) の知識を継承しながら

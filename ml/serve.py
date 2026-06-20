@@ -1,13 +1,11 @@
 """
 ハイブリッド量子古典リコメンデーション推論API
 
-リコメンデーションは古典Two-Tower → PCA → PQC の量子強化 embedding のみを使用。
-（古典単体・QML単体の並列運用は廃止。詳細は train_qml.py 参照）
-
 エンドポイント:
-  GET  /recommendations/{item_id}   量子強化 embedding で FAISS 検索
-  POST /recommendations/by-meta     タイトル・価格から BoW 代理検索 → FAISS
-  POST /quantum/random              PennyLane QRNG (オークション同額抽選用)
+  GET  /recommendations/{item_id}          PQC embedding で FAISS 検索
+  GET  /recommendations/qkernel/{item_id}  量子カーネル法で再ランキング
+  POST /recommendations/by-meta            タイトル・価格から BoW 代理検索 → FAISS
+  POST /quantum/random                     PennyLane QRNG (オークション同額抽選用)
   GET  /health
 """
 
@@ -23,7 +21,10 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 HYBRID_EMBEDDINGS_PATH = "data/qml_embeddings.csv"
+PCA_VECTORS_PATH       = "data/pca_vectors.csv"
 SAMPLE_PATH = "data/merrec_sample_100k.parquet"
+
+N_QUBITS = 6
 
 app = FastAPI(title="Flea Market Recommendation API", version="1.0.0")
 
@@ -160,6 +161,51 @@ def search_by_vector(query_vec: np.ndarray, k: int, exclude_pos: Optional[int] =
     return results
 
 
+print("Loading PCA vectors for quantum kernel...")
+try:
+    pca_df = pd.read_csv(PCA_VECTORS_PATH)
+    pca_item_ids = pca_df["item_id"].to_numpy()
+    pca_vectors = pca_df.drop(columns=["item_id"]).to_numpy(dtype=np.float32)
+    pca_id_to_pos = {int(iid): i for i, iid in enumerate(pca_item_ids)}
+    print(f"  PCA vectors loaded: {len(pca_item_ids):,} items, dim={pca_vectors.shape[1]}")
+    QK_AVAILABLE = True
+except FileNotFoundError:
+    print("  pca_vectors.csv not found — /recommendations/qkernel will be unavailable")
+    QK_AVAILABLE = False
+    pca_vectors = None
+    pca_id_to_pos = {}
+
+
+# ── 量子カーネル法 ──
+# 特徴マップ: AngleEmbedding(Y) → CNOTチェーン → AngleEmbedding(Z)
+# カーネル値: K(x1,x2) = |<ψ(x1)|ψ(x2)>|² = |000...0>を測定する確率
+# パラメータ学習なし。FTQCで量子ビット数を増やすだけでスケールアップ可能。
+
+_qk_dev = qml.device("default.qubit", wires=N_QUBITS)
+
+def _feature_map(x):
+    """IQP風量子特徴マップ。データを量子状態|ψ(x)⟩に変換。"""
+    qml.AngleEmbedding(x, wires=range(N_QUBITS), rotation="Y")
+    for i in range(N_QUBITS - 1):
+        qml.CNOT(wires=[i, i + 1])
+    qml.AngleEmbedding(x, wires=range(N_QUBITS), rotation="Z")
+
+@qml.qnode(_qk_dev)
+def _kernel_circuit(x1, x2):
+    """
+    K(x1,x2) = |<ψ(x1)|ψ(x2)>|²
+    feature_map(x1)を適用してからadjoint(feature_map)(x2)を適用。
+    |000...0>を測定する確率がカーネル値。
+    """
+    _feature_map(x1)
+    qml.adjoint(_feature_map)(x2)
+    return qml.probs(wires=range(N_QUBITS))
+
+def quantum_kernel(x1: np.ndarray, x2: np.ndarray) -> float:
+    """量子カーネル値を返す。値が1に近いほど量子特徴空間で近い。"""
+    return float(_kernel_circuit(x1, x2)[0])
+
+
 print("Ready.")
 
 
@@ -215,8 +261,16 @@ def health():
     return {
         "status": "ok",
         "n_items": int(index.ntotal),
-        "embedding_type": "hybrid_quantum_classical",
-        "pipeline": "Two-Tower(32d) → PCA(6d) → PQC(6d)",
+        "methods": {
+            "pqc": "Two-Tower(32d) → PCA(6d) → PQC変換 → FAISS検索",
+            "qkernel": f"Two-Tower(32d) → PCA(6d) → 量子カーネルK(x1,x2)=|<ψ(x1)|ψ(x2)>|² → 再ランキング  [available={QK_AVAILABLE}]",
+        },
+        "quantum_kernel": {
+            "feature_map": "AngleEmbedding(Y) → CNOTチェーン → AngleEmbedding(Z)",
+            "n_qubits": N_QUBITS,
+            "hilbert_space_dim": 2 ** N_QUBITS,
+            "trainable_params": 0,
+        },
     }
 
 
@@ -227,6 +281,74 @@ def recommendations(item_id: int, k: int = Query(default=10, ge=1, le=50)):
         raise HTTPException(status_code=404, detail=f"item_id {item_id} not found")
 
     results = search_by_vector(vectors[pos: pos + 1], k, exclude_pos=pos)
+    return RecommendationResponse(query_item_id=item_id, results=results)
+
+
+@app.get("/recommendations/qkernel/{item_id}", response_model=RecommendationResponse)
+def recommendations_qkernel(item_id: int, k: int = Query(default=10, ge=1, le=50)):
+    """
+    量子カーネル法によるレコメンデーション。
+
+    処理:
+      1. FAISSでPQC embeddingから候補50件を取得（高速）
+      2. 候補それぞれと量子カーネル K(x1,x2)=|<ψ(x1)|ψ(x2)>|² を計算
+      3. カーネル値の降順で再ランキングして上位k件を返す
+
+    量子カーネルの特性:
+      特徴マップ: AngleEmbedding(Y) → CNOTチェーン → AngleEmbedding(Z)
+      カーネル値: 量子特徴空間|ψ(x)⟩での内積の二乗
+      FTQCで量子ビット数を増やすと2^n次元の特徴空間になり古典計算不可能な類似度を計算できる
+    """
+    if not QK_AVAILABLE:
+        raise HTTPException(status_code=503, detail="pca_vectors.csv が見つかりません。train_qml.py を再実行してください。")
+
+    pos = item_id_to_pos.get(item_id)
+    if pos is None:
+        raise HTTPException(status_code=404, detail=f"item_id {item_id} not found")
+
+    pca_pos = pca_id_to_pos.get(item_id)
+    if pca_pos is None:
+        raise HTTPException(status_code=404, detail=f"item_id {item_id} not found in PCA vectors")
+
+    # Step 1: FAISSで候補50件を取得
+    CANDIDATES = 50
+    q = np.ascontiguousarray(vectors[pos: pos + 1])
+    faiss.normalize_L2(q)
+    scores, indices = index.search(q, CANDIDATES + 1)
+
+    candidate_positions = [
+        int(idx) for idx in indices[0]
+        if idx != -1 and idx != pos
+    ][:CANDIDATES]
+
+    # Step 2: 量子カーネルで再ランキング
+    query_pca = pca_vectors[pca_pos]
+    reranked = []
+    for cand_pos in candidate_positions:
+        cand_item_id = int(item_ids[cand_pos])
+        cand_pca_pos = pca_id_to_pos.get(cand_item_id)
+        if cand_pca_pos is None:
+            continue
+        cand_pca = pca_vectors[cand_pca_pos]
+        k_score = quantum_kernel(query_pca, cand_pca)
+        reranked.append((cand_pos, k_score))
+
+    reranked.sort(key=lambda x: x[1], reverse=True)
+
+    # Step 3: 上位k件をSimilarItemに変換
+    results = []
+    for cand_pos, k_score in reranked[:k]:
+        candidate_id = int(item_ids[cand_pos])
+        row = meta.loc[candidate_id] if candidate_id in meta.index else None
+        results.append(SimilarItem(
+            item_id=candidate_id,
+            score=k_score,
+            name=(str(row["name"]) if row is not None else None),
+            category=(str(row["c0_name"]) if row is not None else None),
+            price=(float(row["price"]) if row is not None else None),
+            is_cold_start=bool(is_cold[cand_pos]),
+        ))
+
     return RecommendationResponse(query_item_id=item_id, results=results)
 
 
