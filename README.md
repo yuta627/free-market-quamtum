@@ -5,7 +5,7 @@
 ## デモ
 
 **フロントエンド**: https://free-market-quamtum.vercel.app  
-**バックエンドAPI**: https://fleamarket-backend-1085125624210.asia-northeast1.run.app/api/v1/products
+**バックエンドAPI**: https://free-market-backend-1085125624210.asia-northeast1.run.app/api/v1/products
 
 ---
 
@@ -18,7 +18,7 @@
 - **オークション**: リアルタイム入札・残り時間表示、出品者による自己入札禁止
 - **量子抽選**: オークション終了後、出品者のみが「量子抽選で落札者決定」ボタンを押せる。バックエンドがMLサーバーのQRNG（PennyLane Hadamardゲート）を呼び出し、同額最高入札者の中から落札者を抽選してDBに保存する
 - **AIチャット**: 商品ページで質問するとAIが商品情報をもとに回答（Gemini API）
-- **ハイブリッド量子古典レコメンデーション**: 商品詳細ページに類似商品を表示
+- **量子カーネルレコメンデーション**: 商品詳細ページに「古典（PCA+FAISS）」と「量子カーネル」を切り替えて類似商品を表示
 - **アプリ内通知**: 商品が購入されると出品者にアプリ内通知が届く。通知には購入者の配送先住所と配送手順が含まれる
 - **配送先住所登録**: マイページで郵便番号・都道府県・市区町村・番地・建物名を登録できる
 
@@ -58,10 +58,9 @@
 
 今回はフリマアプリに実装できる機能に限定しました。具体的には、量子コンピュータ上で実装することで精度や効率を高めることのできる機能、量子の性質を用いた以下のような機能を追加しました。
 
-- 量子機械学習によるリコメンデーション機能
-  　詳細は下記の「リコメンデーション機能」セクションを参照。
+- 量子カーネル法によるリコメンデーション機能  
+  詳細は下記の「レコメンデーション」セクションを参照。
 - 量子の偶然性を用いたオークション同額入札時の公平な購入者決定機能
-
 
 ---
 
@@ -76,7 +75,8 @@ Go バックエンド (Cloud Run, asia-northeast1)
     ├─── PostgreSQL (Cloud SQL, us-central1)
     │
     └─── ML推論サーバー (Cloud Run, asia-northeast1)
-              ├── ハイブリッドFAISSインデックス（73,696件）
+              ├── FAISSインデックス（73,696件, 6次元PCAベクトル）
+              ├── 量子カーネル回路（PennyLane, 6量子ビット）
               └── QRNG（PennyLane Hadamardゲート）
 ```
 
@@ -84,7 +84,9 @@ Go バックエンド (Cloud Run, asia-northeast1)
 
 ## レコメンデーション
 
-商品詳細ページの「あなたへのおすすめ」は以下のパイプラインで生成しています。
+商品詳細ページの「あなたへのおすすめ」は、「古典（PCA+FAISS）」と「量子カーネル」の2モードをトグルボタンで切り替えて比較できます。
+
+### パイプライン（共通前処理）
 
 ```
 MerRecデータセット（100k件）
@@ -95,23 +97,58 @@ MerRecデータセット（100k件）
     ▼
 PCA圧縮（32次元 → 6次元）
     │  説明分散: 74.8%
+    │  [-π, π] にスケーリング（AngleEmbedding用）
     ▼
-PQC（Parameterized Quantum Circuit）
-    │  量子ビット数: 6 / 回路深度: 2
-    │  AngleEmbedding + StronglyEntanglingLayers
-    │  Triplet lossで学習（ポジティブペア: 古典コサイン類似度上位）
-    ▼
-6次元 ハイブリッドembedding（73,696件分をCSVに保存）
+6次元 PCAベクトル（73,696件分をpca_vectors.csvに保存）
+```
+
+### 古典モード（PCA + FAISS）
+
+```
+PCAベクトル（6次元）
     │
     ▼
-FAISSインデックス（IndexFlatIP）で近傍検索
+FAISSインデックス（IndexFlatIP, L2正規化済み）
+    │  クエリ商品と上位k件を内積検索
+    ▼
+類似商品k件を返却
 ```
+
+### 量子カーネルモード
+
+```
+PCAベクトル（6次元）
+    │
+    ▼
+FAISSで上位50件を候補として高速抽出
+    │
+    ▼
+量子カーネル K(x₁, x₂) = |⟨ψ(x₁)|ψ(x₂)⟩|² を50件全てに計算
+    │
+    │  特徴マップ ψ(x):
+    │    AngleEmbedding(x, rotation="Y")
+    │    → CNOTチェーン（量子もつれ生成）
+    │    → AngleEmbedding(x, rotation="Z")
+    │    → adjoint(ψ(x₂)) との内積を測定
+    │
+    ▼
+量子カーネルスコアで再ランキングして上位k件を返却
+```
+
+### 量子カーネル法について
+
+量子カーネル法は、古典的なカーネル法のカーネル関数を量子回路で実装したものです。
+
+- **カーネル値**: K(x₁,x₂) = |⟨ψ(x₁)|ψ(x₂)⟩|² — 量子状態間の内積の二乗
+- **特徴空間**: 量子ビット数をnとすると2ⁿ次元のヒルベルト空間（n=6で64次元）
+- **FTQC拡張性**: FTQCが実現し量子ビット数が増えると特徴空間が指数関数的に拡大する。現在はn=6だが、NISQ制約が解消されればPCA圧縮なしに32次元以上の入力を直接量子状態へマッピングでき、より豊かな表現が可能になる
+- **学習不要**: PQC（Parameterized Quantum Circuit）と異なり、量子カーネル法は回路パラメータの学習が不要。特徴マップを固定した上で類似度を計算するだけでよい
 
 ### NISQ制約
 
-- 量子ビット数: 6（シミュレーター上限）
-- PQC学習サンプル: 500件（ローカルCPUシミュレーションの速度制約）
-- 全件推論: 73,696件対応（PCA圧縮済みベクトルをPQCに通すだけのため、学習サンプル数に依存しない）
+- 量子ビット数: 6（シミュレーター）
+- 量子カーネル計算: クエリごとに50回の回路実行（FAISS事前フィルタリングで削減）
+- 全件推論: 73,696件対応
 
 ### QRNG（量子乱数生成）
 
@@ -185,7 +222,6 @@ uvicorn serve:app --host 0.0.0.0 --port 8001
 | `DB_NAME` | DB名 |
 | `JWT_SECRET` | JWT署名シークレット |
 | `RECOMMENDATION_SERVICE_URL` | MLサーバーURL |
-| `QRNG_SERVICE_URL` | QRNGエンドポイントのベースURL（MLサーバーと同じ） |
 | `STRIPE_SECRET_KEY` | Stripe秘密鍵 |
 | `GEMINI_API_KEY` | Gemini APIキー（チャット・説明文生成） |
 
@@ -193,11 +229,9 @@ uvicorn serve:app --host 0.0.0.0 --port 8001
 
 ```bash
 cd ml
-# 古典Two-Towerの学習（item_embeddings_v2.csvを生成）
-# ※学習スクリプトは別途用意が必要
-
-# ハイブリッドQML embeddingの生成
+# ハイブリッドQML embeddingとPCAベクトルの生成
 pip install scikit-learn torch
 python train_qml.py
-# → data/qml_embeddings.csv が生成される（73,696件）
+# → data/qml_embeddings.csv（73,696件）
+# → data/pca_vectors.csv（量子カーネル・古典モード用）が生成される
 ```
