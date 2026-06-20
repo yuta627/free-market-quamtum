@@ -21,6 +21,20 @@ func (u *RecommendationUsecase) GetQMLSimilarItems(productID uint, limit int) ([
 	return u.client.GetQMLSimilarItems(productID, limit)
 }
 
+func (u *RecommendationUsecase) GetClassicalSimilarItems(productID uint, limit int) ([]infrastructure.RecommendedItem, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	return u.client.GetClassicalSimilarItems(productID, limit)
+}
+
+func (u *RecommendationUsecase) GetQKernelSimilarItems(productID uint, limit int) ([]infrastructure.RecommendedItem, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	return u.client.GetQKernelSimilarItems(productID, limit)
+}
+
 func (u *RecommendationUsecase) GetSimilarItems(productID uint, limit int) ([]infrastructure.RecommendedItem, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 10

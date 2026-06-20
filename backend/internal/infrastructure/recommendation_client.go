@@ -25,6 +25,11 @@ func NewRecommendationClient() *RecommendationClient {
 	}
 }
 
+// 量子カーネル計算用（50件分の回路実行があるため長めのタイムアウト）
+func newSlowClient() *http.Client {
+	return &http.Client{Timeout: 60 * time.Second}
+}
+
 type RecommendedItem struct {
 	ItemID      int64   `json:"item_id"`
 	Score       float64 `json:"score"`
@@ -96,6 +101,42 @@ func (c *RecommendationClient) GetQMLSimilarItems(itemID uint, k int) ([]Recomme
 	var parsed recommendationsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return nil, fmt.Errorf("decoding QML response: %w", err)
+	}
+	return parsed.Results, nil
+}
+
+// GetClassicalSimilarItems calls the classical (PCA + FAISS) recommendation endpoint.
+func (c *RecommendationClient) GetClassicalSimilarItems(itemID uint, k int) ([]RecommendedItem, error) {
+	url := fmt.Sprintf("%s/recommendations/classical/%d?k=%d", c.baseURL, itemID, k)
+	resp, err := c.client.Get(url)
+	if err != nil {
+		return []RecommendedItem{}, nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return []RecommendedItem{}, nil
+	}
+	var parsed recommendationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return []RecommendedItem{}, nil
+	}
+	return parsed.Results, nil
+}
+
+// GetQKernelSimilarItems calls the quantum kernel recommendation endpoint.
+func (c *RecommendationClient) GetQKernelSimilarItems(itemID uint, k int) ([]RecommendedItem, error) {
+	url := fmt.Sprintf("%s/recommendations/qkernel/%d?k=%d", c.baseURL, itemID, k)
+	resp, err := newSlowClient().Get(url)
+	if err != nil {
+		return []RecommendedItem{}, nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return []RecommendedItem{}, nil
+	}
+	var parsed recommendationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return []RecommendedItem{}, nil
 	}
 	return parsed.Results, nil
 }

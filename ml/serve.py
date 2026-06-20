@@ -161,19 +161,27 @@ def search_by_vector(query_vec: np.ndarray, k: int, exclude_pos: Optional[int] =
     return results
 
 
-print("Loading PCA vectors for quantum kernel...")
+print("Loading PCA vectors for quantum kernel and classical search...")
+
 try:
     pca_df = pd.read_csv(PCA_VECTORS_PATH)
     pca_item_ids = pca_df["item_id"].to_numpy()
     pca_vectors = pca_df.drop(columns=["item_id"]).to_numpy(dtype=np.float32)
     pca_id_to_pos = {int(iid): i for i, iid in enumerate(pca_item_ids)}
+    pca_vectors_norm = np.ascontiguousarray(pca_vectors.copy())
+    faiss.normalize_L2(pca_vectors_norm)
+    classical_index = faiss.IndexFlatIP(pca_vectors_norm.shape[1])
+    classical_index.add(pca_vectors_norm)
     print(f"  PCA vectors loaded: {len(pca_item_ids):,} items, dim={pca_vectors.shape[1]}")
+    print(f"  Classical FAISS index built: {classical_index.ntotal:,} vectors")
     QK_AVAILABLE = True
 except FileNotFoundError:
-    print("  pca_vectors.csv not found — /recommendations/qkernel will be unavailable")
+    print("  pca_vectors.csv not found — /recommendations/classical and /qkernel will be unavailable")
     QK_AVAILABLE = False
     pca_vectors = None
     pca_id_to_pos = {}
+    classical_index = None
+    pca_vectors_norm = None
 
 
 # ── 量子カーネル法 ──
@@ -281,6 +289,43 @@ def recommendations(item_id: int, k: int = Query(default=10, ge=1, le=50)):
         raise HTTPException(status_code=404, detail=f"item_id {item_id} not found")
 
     results = search_by_vector(vectors[pos: pos + 1], k, exclude_pos=pos)
+    return RecommendationResponse(query_item_id=item_id, results=results)
+
+
+@app.get("/recommendations/classical/{item_id}", response_model=RecommendationResponse)
+def recommendations_classical(item_id: int, k: int = Query(default=10, ge=1, le=50)):
+    """
+    古典レコメンデーション。
+    PCA圧縮済み6次元ベクトルをそのままFAISSで近傍検索する。
+    量子変換なし。量子カーネル法との比較用。
+    """
+    if not QK_AVAILABLE:
+        raise HTTPException(status_code=503, detail="pca_vectors.csv が見つかりません。")
+
+    pca_pos = pca_id_to_pos.get(item_id)
+    if pca_pos is None:
+        raise HTTPException(status_code=404, detail=f"item_id {item_id} not found")
+
+    q = np.ascontiguousarray(pca_vectors_norm[pca_pos: pca_pos + 1])
+    scores, indices = classical_index.search(q, k + 1)
+
+    results = []
+    for score, idx in zip(scores[0], indices[0]):
+        if idx == -1 or idx == pca_pos:
+            continue
+        candidate_id = int(pca_item_ids[idx])
+        row = meta.loc[candidate_id] if candidate_id in meta.index else None
+        pos_in_main = item_id_to_pos.get(candidate_id)
+        results.append(SimilarItem(
+            item_id=candidate_id,
+            score=float(score),
+            name=(str(row["name"]) if row is not None else None),
+            category=(str(row["c0_name"]) if row is not None else None),
+            price=(float(row["price"]) if row is not None else None),
+            is_cold_start=bool(is_cold[pos_in_main]) if pos_in_main is not None else False,
+        ))
+        if len(results) >= k:
+            break
     return RecommendationResponse(query_item_id=item_id, results=results)
 
 
