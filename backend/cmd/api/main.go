@@ -20,10 +20,31 @@ func main() {
 	if err != nil {
 		log.Fatalf("database connection failed: %v", err)
 	}
-	// Add address columns to users table if not exist
+	// Run schema migrations
 	sqlDB, _ := db.DB()
-	for _, col := range []string{"postal_code varchar(10)", "prefecture varchar(20)", "city varchar(100)", "address_line varchar(200)", "building varchar(200)"} {
-		sqlDB.Exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS " + col)
+	migrations := []string{
+		// users: address columns
+		"ALTER TABLE users ADD COLUMN IF NOT EXISTS postal_code varchar(10)",
+		"ALTER TABLE users ADD COLUMN IF NOT EXISTS prefecture varchar(20)",
+		"ALTER TABLE users ADD COLUMN IF NOT EXISTS city varchar(100)",
+		"ALTER TABLE users ADD COLUMN IF NOT EXISTS address_line varchar(200)",
+		"ALTER TABLE users ADD COLUMN IF NOT EXISTS building varchar(200)",
+		// likes table
+		`CREATE TABLE IF NOT EXISTS likes (
+			id         BIGSERIAL   PRIMARY KEY,
+			user_id    BIGINT      NOT NULL REFERENCES users(id),
+			product_id BIGINT      NOT NULL REFERENCES products(id),
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_likes_user_product ON likes(user_id, product_id)",
+		"CREATE INDEX IF NOT EXISTS idx_likes_product_id ON likes(product_id)",
+		"ALTER TABLE likes ADD COLUMN IF NOT EXISTS liked BOOLEAN NOT NULL DEFAULT TRUE",
+		"ALTER TABLE likes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+	}
+	for _, m := range migrations {
+		if _, err := sqlDB.Exec(m); err != nil {
+			log.Printf("migration warning: %v", err)
+		}
 	}
 
 	userRepo := persistence.NewUserRepository(db)
