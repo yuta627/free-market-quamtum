@@ -25,14 +25,30 @@ func (u *RecommendationUsecase) GetClassicalSimilarItems(productID uint, limit i
 	if limit <= 0 || limit > 50 {
 		limit = 10
 	}
-	return u.client.GetClassicalSimilarItems(productID, limit)
+	items, err := u.client.GetClassicalSimilarItems(productID, limit)
+	if err != nil || len(items) > 0 {
+		return items, err
+	}
+	product, err := u.productRepo.FindByID(productID)
+	if err != nil || product == nil {
+		return []infrastructure.RecommendedItem{}, nil
+	}
+	return u.client.GetSimilarByMeta(product.Title, float64(product.Price), string(product.Condition), limit)
 }
 
 func (u *RecommendationUsecase) GetQKernelSimilarItems(productID uint, limit int) ([]infrastructure.RecommendedItem, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 10
 	}
-	return u.client.GetQKernelSimilarItems(productID, limit)
+	items, err := u.client.GetQKernelSimilarItems(productID, limit)
+	if err != nil || len(items) > 0 {
+		return items, err
+	}
+	product, err := u.productRepo.FindByID(productID)
+	if err != nil || product == nil {
+		return []infrastructure.RecommendedItem{}, nil
+	}
+	return u.client.GetSimilarByMeta(product.Title, float64(product.Price), string(product.Condition), limit)
 }
 
 func (u *RecommendationUsecase) GetSimilarItems(productID uint, limit int) ([]infrastructure.RecommendedItem, error) {

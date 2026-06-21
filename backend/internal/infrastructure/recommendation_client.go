@@ -141,6 +141,10 @@ func (c *RecommendationClient) GetQKernelSimilarItems(itemID uint, k int) ([]Rec
 	return parsed.Results, nil
 }
 
+func (c *RecommendationClient) GetSimilarByMeta(title string, price float64, condition string, k int) ([]RecommendedItem, error) {
+	return c.getSimilarByMeta(title, price, condition, k)
+}
+
 func (c *RecommendationClient) getSimilarByMeta(title string, price float64, condition string, k int) ([]RecommendedItem, error) {
 	body, _ := json.Marshal(metaRecommendationRequest{
 		Title:     title,
