@@ -219,7 +219,7 @@ print("Ready.")
 
 # ── QRNG (PennyLane) — オークション同額抽選用 ──
 
-_qrng_dev = qml.device("default.qubit", wires=8)
+_qrng_dev = qml.device("default.qubit", wires=8, shots=1)
 
 @qml.qnode(_qrng_dev)
 def _qrng_circuit(n_qubits: int):
@@ -234,7 +234,7 @@ def quantum_randint(low: int, high: int):
     n_qubits = max(n.bit_length(), 1)
     while True:
         samples = _qrng_circuit(n_qubits)
-        bits = [int((1 - int(s)) / 2) for s in samples[:n_qubits]]
+        bits = [int((1 - int(s)) / 2) for s in np.array(samples).flatten()[:n_qubits]]
         value = int("".join(str(b) for b in bits), 2)
         if value < n:
             return low + value, bits, n_qubits, n_qubits
