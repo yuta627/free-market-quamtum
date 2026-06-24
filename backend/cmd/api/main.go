@@ -40,6 +40,19 @@ func main() {
 		"CREATE INDEX IF NOT EXISTS idx_likes_product_id ON likes(product_id)",
 		"ALTER TABLE likes ADD COLUMN IF NOT EXISTS liked BOOLEAN NOT NULL DEFAULT TRUE",
 		"ALTER TABLE likes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+		// messages table
+		`CREATE TABLE IF NOT EXISTS messages (
+			id         BIGSERIAL   PRIMARY KEY,
+			product_id BIGINT      NOT NULL REFERENCES products(id),
+			sender_id  BIGINT      NOT NULL REFERENCES users(id),
+			body       TEXT        NOT NULL,
+			is_read    BOOLEAN     NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_messages_product_id ON messages(product_id)",
+		"CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)",
 	}
 	for _, m := range migrations {
 		if _, err := sqlDB.Exec(m); err != nil {
