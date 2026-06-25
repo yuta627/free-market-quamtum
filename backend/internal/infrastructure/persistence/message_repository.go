@@ -4,6 +4,7 @@ import (
 	"fleamarket-backend/internal/domain"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MessageRepository struct {
@@ -15,7 +16,7 @@ func NewMessageRepository(db *gorm.DB) *MessageRepository {
 }
 
 func (r *MessageRepository) Create(m *domain.Message) error {
-	return r.db.Omit("Product", "Sender").Create(m).Error
+	return r.db.Omit(clause.Associations).Create(m).Error
 }
 
 // ListByProduct は商品IDに紐づくメッセージを古い順に返す。
