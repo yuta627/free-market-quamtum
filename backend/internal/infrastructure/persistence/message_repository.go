@@ -15,7 +15,7 @@ func NewMessageRepository(db *gorm.DB) *MessageRepository {
 }
 
 func (r *MessageRepository) Create(m *domain.Message) error {
-	return r.db.Create(m).Error
+	return r.db.Omit("Product", "Sender").Create(m).Error
 }
 
 // ListByProduct は商品IDに紐づくメッセージを古い順に返す。
