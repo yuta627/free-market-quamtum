@@ -48,7 +48,7 @@ func (h *MessageHandler) Send(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "送信に失敗しました"})
 		return
 	}
 	c.JSON(http.StatusCreated, msg)
